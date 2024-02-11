@@ -3,35 +3,40 @@
   <HelloWorld msg="Welcome to Your Vue.js App"/>
 
   <hr>
-
+  
   <h1>Hello World from me</h1>
+  
+  <div id="app">
+  
+    <hr>
+  
+    <div style="display: flex; justify-content: center; align-items: center;">
+      <div>
+        <h1>TodoApp</h1>
+        <v-text-field v-model="name" label="Name"></v-text-field>
+        <v-textarea v-model="description" label="Description" auto-grow></v-textarea>
+        <v-btn @click="submit">Create</v-btn>
+        <v-btn>Clear All</v-btn>
+      </div>
+    </div>
 
-  <hr>
+    <hr>
+    <div>
+      <h2>items</h2>
+      <v-list three-line>
+        <template v-for="(item, index) in items"  :key="index">
+          <v-list-item>
+            <v-list-item-content>
+              <v-list-item-title>{{item.name}} <small class="text-grey"> {{item.date}}</small></v-list-item-title>
+              <div class="pl-3 mt-2" v-html="item.description"></div>
+            </v-list-item-content>
+          </v-list-item>
+          <v-divider />
+        </template>
+      </v-list>
+    </div>
 
-  <div>
-    <h1>TodoApp</h1>
-    <v-text-field v-model="name" label="Name"></v-text-field>
-    <v-text-field v-model="description" label="Description"></v-text-field>
-    <v-btn @click="submit">Create</v-btn>
   </div>
-
-  <hr>
-  <div>
-    <h2>items</h2>
-    <v-list three-line>
-      <template v-for="(item, index) in items"  :key="index">
-        <v-list-item>
-          <v-list-item-content>
-            <v-list-item-title>{{item.name}} <small class="text-grey"> {{item.date}}</small></v-list-item-title>
-            <div class="pl-3 mt-2" v-html="item.description"></div>
-          </v-list-item-content>
-        </v-list-item>
-        <v-divider />
-      </template>
-    </v-list>
-  </div>
-
-
 </template>
 
 <script>
@@ -89,18 +94,15 @@ export default {
       ).subscribe({
         next: ({ data }) => {
           console.log(data)
+          const res = data.onCreateTodo;
+          const onCreateTodo = {
+            ...res,
+            description:res.description.replace(/\r?\n/g, '<br>'),
+            date: dayjs(res.createdAt).format('YYYY/MM/DD')
+          }
+          this.items.unshift(onCreateTodo)
         }, 
         error: (error) => console.warn(error)
-        // next: (eventData) => {
-        //   console.log(eventData.value.data);
-        //   const res = eventData.value.data.onCreateTodo;
-        //   const onCreateTodo = {
-        //     ...res,
-        //     description:res.description.replace(/\r?\n/g, '<br>'),
-        //     date: dayjs(res.createdAt).format('YYYY/MM/DD')
-        //   }
-        //   this.items.unshift(onCreateTodo)
-        // }
       })
     },
     postData: async function () {
