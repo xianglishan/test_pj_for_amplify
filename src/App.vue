@@ -1,25 +1,128 @@
 <template>
   <img alt="Vue logo" src="./assets/logo.png">
   <HelloWorld msg="Welcome to Your Vue.js App"/>
+
+  <hr>
+
   <h1>Hello World from me</h1>
+
+  <hr>
+
   <div>
     <h1>TodoApp</h1>
     <v-text-field v-model="name" label="Name"></v-text-field>
     <v-text-field v-model="description" label="Description"></v-text-field>
-    <v-btn @click="createTodo">Create</v-btn>
-    <ul>
-      <li v-for="todo in todos" :key="todo.id">
-        {{ todo.name }} : {{ todo.description }}
-      </li>
-    </ul>
+    <v-btn @click="submit">Create</v-btn>
   </div>
+
+  <hr>
+  <div>
+    <h2>items</h2>
+    <v-list three-line>
+      <template v-for="(item, index) in items"  :key="index">
+        <v-list-item>
+          <v-list-item-content>
+            <v-list-item-title>{{item.name}} <small class="text-grey"> {{item.date}}</small></v-list-item-title>
+            <div class="pl-3 mt-2" v-html="item.description"></div>
+          </v-list-item-content>
+        </v-list-item>
+        <v-divider />
+      </template>
+    </v-list>
+  </div>
+
+
 </template>
 
 <script>
 import HelloWorld from './components/HelloWorld.vue'
+import dayjs from 'dayjs'
+import { generateClient } from 'aws-amplify/api'
+import { createTodo } from "./graphql/mutations";
+import { listTodos } from "./graphql/queries";
+import { onCreateTodo } from "./graphql/subscriptions";
+dayjs.locale("ja");
+const client = generateClient();
 
 export default {
   name: 'App',
+  data: () => ({
+    name: "", 
+    description: "", 
+    items: undefined
+  }), 
+  mounted() {
+    this.getData();
+    this.registerSubscription()
+  }, 
+  methods: {
+    submit() {
+      this.postData();
+    }, 
+    clear() {
+      this.name = ""
+      this.description = ""
+    }, 
+    getData: async function () {
+      // データ取得
+      await client.graphql({ query: listTodos })
+        .then((response) => {
+          // 改行をタグに変換
+          const items = response.data.listTodos.items.map( val => {
+            val.description = val.description.replace(/\r?\n/g, '<br>')
+            val.date = dayjs(val.createdAt).format('YYYY/MM/DD')
+            return val
+          })
+          // テーブル表示
+          this.items = items.sort((a,b)=> a.createdAt < b.createdAt ? 1 : -1)
+        })
+        .catch((error) => {
+          // テーブルリセット
+          console.error(error);
+          this.items = []
+        })
+    }, 
+    registerSubscription: async function (){
+      // サブスクリプション登録
+      await client.graphql(
+        { query: onCreateTodo }
+      ).subscribe({
+        next: ({ data }) => {
+          console.log(data)
+        }, 
+        error: (error) => console.warn(error)
+        // next: (eventData) => {
+        //   console.log(eventData.value.data);
+        //   const res = eventData.value.data.onCreateTodo;
+        //   const onCreateTodo = {
+        //     ...res,
+        //     description:res.description.replace(/\r?\n/g, '<br>'),
+        //     date: dayjs(res.createdAt).format('YYYY/MM/DD')
+        //   }
+        //   this.items.unshift(onCreateTodo)
+        // }
+      })
+    },
+    postData: async function () {
+      // オプション
+      const myInit = {
+        id: String(dayjs().format()),  
+        name: String(this.name),
+        description: String(this.description),
+      };
+      // データ登録
+      await client.graphql({
+        query: createTodo, 
+        variables: { input: myInit }
+      }).then((response) => {
+          console.log(response);
+          this.clear();
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+    }
+  }, 
   components: {
     HelloWorld
   }

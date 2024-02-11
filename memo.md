@@ -7,6 +7,7 @@
 
 3. amplify
 - `npm install -g @aws-amplify/cli`
+- `amplify configure`
 
 4. volta pin
 - `volta pin node`
